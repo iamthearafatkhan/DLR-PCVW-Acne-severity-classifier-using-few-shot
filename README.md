@@ -79,9 +79,9 @@
 | **3-Shot** | 79.40% | ± 0.73% |
 | **5-Shot** | 79.60% | ± 0.62% |
 | **10-Shot** | 80.27% | ± 0.43% |
-
+This is internal performance and showing feature ectivations
 <div align="center">
-  <img src="assets/results.png" alt="Model Performance" width="600"/>
+  <img src="assets/feature_activations.png" alt="Model Performance" width="600"/>
 </div>
 
 ---

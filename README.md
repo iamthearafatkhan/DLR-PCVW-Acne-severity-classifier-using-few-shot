@@ -86,50 +86,178 @@ This is internal performance and showing feature ectivations
   <img src="image/feature_activations.png" alt="Model Performance" width="600"/>
 </div>
 
+
+
 ---
 
-📂 Project Structure
+## 🔬 Technical Details
+
+### Feature Extraction
+
+**EfficientNet-B0** is used as the backbone network to extract a **1280-dimensional feature representation** from each input image.
+
+### FiLM Calibration
+
+Feature-wise Linear Modulation (FiLM) is used to adapt extracted features for the target few-shot classification task.
+
+The calibration mechanism learns feature-specific modulation parameters to improve task adaptation.
+
+### Lesion Attention
+
+A soft attention mechanism is used to emphasize regions associated with acne lesions while reducing the influence of irrelevant background information.
+
+### PCVW Representation
+
+The framework represents each feature using a combination of its mean and standard deviation:
+
+[
+z = \mu + w \cdot \sigma
+]
+
+where:
+
+* (\mu) = feature mean
+* (\sigma) = feature standard deviation
+* (w) = learnable variance-weighting parameter
+
+This allows the model to incorporate both central feature information and feature variability.
+
+### Prototype Network
+
+Class prototypes are constructed from the support examples.
+
+Classification is performed using **cosine similarity** between the query representation and class prototypes.
+
+---
+
+## ⚙️ Training Configuration
+
+| Parameter         |            Value |
+| ----------------- | ---------------: |
+| Training Episodes |            1,200 |
+| Testing Episodes  |              300 |
+| Backbone          |  EfficientNet-B0 |
+| Feature Dimension |             1280 |
+| Optimizer         |            AdamW |
+| Learning Rate     |         2 × 10⁻⁴ |
+| Weight Decay      |            0.008 |
+| Scheduler         | Cosine Annealing |
+| Label Smoothing   |             0.05 |
+| Temperature       |             16.0 |
+
+---
+
+## 📉 Loss Functions
+
+The training objective combines multiple losses:
+
+### Cross-Entropy Loss
+
+Standard classification loss used to optimize the predicted class probabilities.
+
+### Label Distribution Learning (LDL) Loss
+
+Encourages the model to learn the distributional characteristics of acne severity labels rather than relying only on hard class assignments.
+
+### Multi-Head Consistency Loss
+
+Encourages predictions from different model heads to remain consistent, improving prediction stability and representation quality.
+
+---
+
+## 📂 Project Structure
+
+```text
 DLR-PCVW-Acne-severity-classifier-using-few-shot/
-├── app.py                          # Main Streamlit application
-├── requirements.txt                # Python dependencies
-├── pyproject.toml                  # Project configuration
-├── create_support_set.py           # Support set generator
-├── README.md                       # Documentation
+│
+├── app.py
+│   └── Main Streamlit application
+│
+├── requirements.txt
+│   └── Python dependencies
+│
+├── pyproject.toml
+│   └── Project configuration
+│
+├── create_support_set.py
+│   └── Support-set generation utility
+│
+├── README.md
+│   └── Project documentation
+│
 ├── image/
-│   └── proposed_architecture.png   # Architecture diagram
+│   └── proposed_architecture.png
+│       └── Proposed DLR-PCVW architecture
+│
 ├── .streamlit/
-│   └── config.toml                 # Streamlit configuration
-├── saved_models/                   # Auto-downloaded model cache
-│   └── ensemble_models.pt          # Ensemble model (141MB)
-└── support_set/                    # Auto-downloaded support set
-    └── support_set.pt              # Support images
+│   └── config.toml
+│       └── Streamlit configuration
+│
+├── saved_models/
+│   └── ensemble_models.pt
+│       └── Automatically downloaded ensemble model
+│
+└── support_set/
+    └── support_set.pt
+        └── Automatically downloaded support set
+```
 
-🔬 Technical Details
-DLR-PCVW Components
-Feature Extraction: EfficientNet-B0 extracts 1280-dimensional features
+---
 
-FiLM Calibration: Feature-wise modulation for task adaptation
 
-Lesion Attention: Soft attention map highlighting lesion regions
 
-PCVW Representation: μ + w·σ (learnable variance weighting)
+## 🧪 Few-Shot Learning
 
-Prototype Network: Cosine similarity to class prototypes
+Unlike conventional deep-learning approaches that require large numbers of labeled examples for every class, this framework performs classification using a limited number of support examples.
 
-Training Configuration
-Parameter	Value
-Training Episodes	1,200
-Testing Episodes	300
-Optimizer	AdamW
-Learning Rate	2e-4
-Weight Decay	0.008
-Scheduler	Cosine Annealing
-Label Smoothing	0.05
-Temperature	16.0
+The support set provides representative examples for each acne severity class.
 
-Loss Functions
-Cross-Entropy Loss: Standard classification loss
+For a query image:
 
-LDL Loss: Label Distribution Learning
+1. Extract the feature representation.
+2. Apply feature calibration and lesion-aware processing.
+3. Generate the PCVW representation.
+4. Compare the query representation with class prototypes.
+5. Calculate cosine similarity.
+6. Predict the most similar acne severity class.
 
-Consistency Loss: Multi-head consistency
+---
+
+## 🎯 Key Contributions
+
+The DLR-PCVW framework incorporates several components specifically designed for few-shot acne severity classification:
+
+* Lesion-aware feature representation
+* FiLM-based task-specific feature calibration
+* Per-Channel Variance Weighting
+* Prototype-based few-shot classification
+* Label Distribution Learning
+* Multi-head consistency regularization
+* Ensemble-based prediction
+* Streamlit deployment for practical inference
+
+---
+
+## 🛠️ Technologies
+
+| Technology      | Purpose                 |
+| --------------- | ----------------------- |
+| Python          | Core implementation     |
+| PyTorch         | Deep learning framework |
+| EfficientNet-B0 | Feature extraction      |
+| Streamlit       | Web application         |
+| NumPy           | Numerical computation   |
+| Pillow          | Image processing        |
+| Hugging Face    | Model hosting           |
+
+---
+
+## ⚠️ Disclaimer
+
+This project is intended for **research and educational purposes only**.
+
+The predictions generated by this system should **not be considered a medical diagnosis or a substitute for professional dermatological assessment**.
+
+---
+
+

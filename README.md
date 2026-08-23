@@ -88,24 +88,48 @@ This is internal performance and showing feature ectivations
 
 ---
 
-## 🚀 Quick Start
+📂 Project Structure
+DLR-PCVW-Acne-severity-classifier-using-few-shot/
+├── app.py                          # Main Streamlit application
+├── requirements.txt                # Python dependencies
+├── pyproject.toml                  # Project configuration
+├── create_support_set.py           # Support set generator
+├── README.md                       # Documentation
+├── image/
+│   └── proposed_architecture.png   # Architecture diagram
+├── .streamlit/
+│   └── config.toml                 # Streamlit configuration
+├── saved_models/                   # Auto-downloaded model cache
+│   └── ensemble_models.pt          # Ensemble model (141MB)
+└── support_set/                    # Auto-downloaded support set
+    └── support_set.pt              # Support images
 
-### Local Development
+🔬 Technical Details
+DLR-PCVW Components
+Feature Extraction: EfficientNet-B0 extracts 1280-dimensional features
 
-```bash
-# 1. Clone the repository
-git clone https://github.com/iamthearafatkhan/DLR-PCVW-Acne-severity-classifier-using-few-shot.git
-cd DLR-PCVW-Acne-severity-classifier-using-few-shot
+FiLM Calibration: Feature-wise modulation for task adaptation
 
-# 2. Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+Lesion Attention: Soft attention map highlighting lesion regions
 
-# 3. Install dependencies
-pip install -r requirements.txt
+PCVW Representation: μ + w·σ (learnable variance weighting)
 
-# 4. Create support set (requires dataset)
-python create_support_set.py
+Prototype Network: Cosine similarity to class prototypes
 
-# 5. Run the app
-streamlit run app.py
+Training Configuration
+Parameter	Value
+Training Episodes	1,200
+Testing Episodes	300
+Optimizer	AdamW
+Learning Rate	2e-4
+Weight Decay	0.008
+Scheduler	Cosine Annealing
+Label Smoothing	0.05
+Temperature	16.0
+
+Loss Functions
+Cross-Entropy Loss: Standard classification loss
+
+LDL Loss: Label Distribution Learning
+
+Consistency Loss: Multi-head consistency

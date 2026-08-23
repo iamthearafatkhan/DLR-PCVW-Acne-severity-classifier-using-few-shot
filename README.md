@@ -81,7 +81,7 @@
 | **10-Shot** | 80.27% | ± 0.43% |
 This is internal performance and showing feature ectivations
 <div align="center">
-  <img src="assets/feature_activations.png" alt="Model Performance" width="600"/>
+  <img src="image/feature_activations.png" alt="Model Performance" width="600"/>
 </div>
 
 ---

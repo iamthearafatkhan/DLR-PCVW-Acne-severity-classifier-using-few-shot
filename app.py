@@ -1,3 +1,27 @@
+# app.py
+import sys
+import os
+
+# Add current directory to path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+import streamlit as st
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import numpy as np
+from PIL import Image
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')  # Important for Streamlit Cloud
+import requests
+from io import BytesIO
+import time
+import base64
+
+
+
+
 # app.py - DLR-PCVW Acne Severity Classification Web App
 import streamlit as st
 import torch
@@ -441,7 +465,7 @@ class DLRPredictor:
                     checkpoint = torch.load(
                         BytesIO(response.content), 
                         map_location=self.device,
-                        weights_only=False
+                        weights_only=False  # Required for PyTorch 2.6+
                     )
             else:
                 checkpoint = torch.load(
@@ -458,6 +482,30 @@ class DLRPredictor:
                 self.models.append(model)
             
             st.success(f"✅ Loaded {len(self.models)} ensemble models")
+            
+        except TypeError as e:
+            # Fallback for older PyTorch versions that don't support weights_only
+            st.warning("Older PyTorch version detected. Loading without weights_only...")
+            try:
+                if model_path_or_url.startswith('http'):
+                    response = requests.get(model_path_or_url)
+                    checkpoint = torch.load(BytesIO(response.content), map_location=self.device)
+                else:
+                    checkpoint = torch.load(model_path_or_url, map_location=self.device)
+                
+                model_states = checkpoint['models']
+                for state_dict in model_states:
+                    model = DLR_ProtoNet().to(self.device)
+                    model.load_state_dict(state_dict)
+                    model.eval()
+                    self.models.append(model)
+                
+                st.success(f"✅ Loaded {len(self.models)} ensemble models")
+                
+            except Exception as e2:
+                st.error(f"Error loading model: {e2}")
+                raise
+                
         except Exception as e:
             st.error(f"Error loading model: {e}")
             raise

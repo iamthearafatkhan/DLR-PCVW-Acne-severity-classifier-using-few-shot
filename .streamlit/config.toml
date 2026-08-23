@@ -1,0 +1,18 @@
+# .streamlit/config.toml
+[theme]
+primaryColor = "#1a2332"
+backgroundColor = "#f0f4f8"
+secondaryBackgroundColor = "#ffffff"
+textColor = "#1a2332"
+font = "sans serif"
+
+[server]
+maxUploadSize = 10
+enableXsrfProtection = true
+enableCORS = false
+
+[browser]
+gatherUsageStats = false
+
+[runner]
+fixMatplotlib = true

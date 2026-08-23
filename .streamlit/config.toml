@@ -1,18 +1,12 @@
-# .streamlit/config.toml
 [theme]
-primaryColor = "#1a2332"
-backgroundColor = "#f0f4f8"
-secondaryBackgroundColor = "#ffffff"
-textColor = "#1a2332"
-font = "sans serif"
-
-[server]
-maxUploadSize = 10
-enableXsrfProtection = true
-enableCORS = false
+primaryColor = "#60a5fa"
+backgroundColor = "#0b0f14"
+secondaryBackgroundColor = "#1a2332"
+textColor = "#ffffff"
 
 [browser]
 gatherUsageStats = false
 
 [runner]
-fixMatplotlib = true
+# Force Python version
+pythonVersion = "3.10"

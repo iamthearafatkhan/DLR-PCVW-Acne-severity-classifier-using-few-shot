@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.coverage
+*.log
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Model files (too large for GitHub)
+*.pt
+*.pth
+*.h5
+*.ckpt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dataset
+data/
+*.jpg
+*.png
+*.jpeg
+
+# Support set (optional - can be generated)
+# support_set/

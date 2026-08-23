@@ -7,4 +7,3 @@ Pillow==10.0.0
 requests==2.31.0
 protobuf==3.20.3
 packaging==23.1
-huggingface-hub==0.20.0

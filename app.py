@@ -16,7 +16,6 @@ import requests
 from io import BytesIO
 import time
 import random
-from huggingface_hub import hf_hub_download  # 🔥 CRITICAL: For Xet storage
 
 # ============================================================
 # PAGE CONFIGURATION
@@ -471,7 +470,7 @@ class DLRPredictor:
         self.support_y = None
         
         try:
-            # Load checkpoint (now using local file from hf_hub_download)
+            # Load checkpoint from local file
             checkpoint = torch.load(model_path, map_location=self.device, weights_only=False)
             
             model_states = checkpoint['models']
@@ -547,11 +546,80 @@ class DLRPredictor:
         }
 
 # ============================================================
-# SUPPORT SET LOADING - FROM HUGGING FACE
+# DOWNLOAD FUNCTIONS - Using requests (NO huggingface-hub)
 # ============================================================
+def download_file(url, local_path, description="file"):
+    """Download a file with progress tracking"""
+    try:
+        response = requests.get(url, stream=True)
+        response.raise_for_status()
+        
+        # Check if it's a valid file (not HTML)
+        content_type = response.headers.get('content-type', '')
+        if 'text/html' in content_type:
+            st.error(f"❌ The URL returned an HTML page instead of {description}.")
+            return False
+        
+        total_size = int(response.headers.get('content-length', 0))
+        
+        with open(local_path, 'wb') as f:
+            if total_size == 0:
+                f.write(response.content)
+            else:
+                downloaded = 0
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+                    downloaded += len(chunk)
+                    # Show progress every 5MB
+                    if downloaded % (5 * 1024 * 1024) == 0:
+                        st.info(f"Downloaded {downloaded // (1024*1024)} MB...")
+        
+        return True
+        
+    except Exception as e:
+        st.error(f"Error downloading {description}: {e}")
+        return False
+
+def load_model():
+    """Load model from Hugging Face or local"""
+    
+    os.makedirs("saved_models", exist_ok=True)
+    local_model = "saved_models/ensemble_models.pt"
+    
+    if os.path.exists(local_model):
+        st.info("📁 Using cached local model")
+        model_path = local_model
+    else:
+        st.info("📥 Downloading model from Hugging Face...")
+        url = "https://huggingface.co/iamthearafatkhan/dlr-pcvw-acne-severity/resolve/main/ensemble_models.pt?download=true"
+        
+        success = download_file(url, local_model, "model")
+        if not success:
+            st.error("❌ Failed to download model. Please check your internet connection and try again.")
+            st.info("""
+            **Troubleshooting:**
+            1. Make sure your model is PUBLIC on Hugging Face
+            2. Try this URL in your browser: 
+               https://huggingface.co/iamthearafatkhan/dlr-pcvw-acne-severity/resolve/main/ensemble_models.pt
+            3. If it downloads, the URL works!
+            """)
+            st.stop()
+        
+        st.success("✅ Model downloaded successfully!")
+        model_path = local_model
+    
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    predictor = DLRPredictor(model_path, device)
+    
+    support_x, support_y = load_support_set()
+    predictor.load_support_set(support_x, support_y)
+    
+    return predictor
+
 def load_support_set():
     """Load support set from Hugging Face or local file"""
     
+    os.makedirs("support_set", exist_ok=True)
     local_support_file = "support_set/support_set.pt"
     
     if os.path.exists(local_support_file):
@@ -561,14 +629,13 @@ def load_support_set():
     
     try:
         st.info("📥 Downloading support set from Hugging Face...")
-        # Use hf_hub_download to properly handle Xet storage
-        support_path = hf_hub_download(
-            repo_id="iamthearafatkhan/dlr-pcvw-acne-severity",
-            filename="support_set/support_set.pt",
-            local_dir="support_set",
-            local_dir_use_symlinks=False
-        )
-        data = torch.load(support_path, map_location='cpu', weights_only=False)
+        url = "https://huggingface.co/iamthearafatkhan/dlr-pcvw-acne-severity/resolve/main/support_set/support_set.pt?download=true"
+        
+        success = download_file(url, local_support_file, "support set")
+        if not success:
+            return create_fallback_support_set()
+        
+        data = torch.load(local_support_file, map_location='cpu', weights_only=False)
         st.success(f"✅ Support set downloaded and cached locally")
         return data['x'], data['y']
             
@@ -741,44 +808,12 @@ def main():
         Attention visualizations indicate model focus and are not clinically validated.
         """)
 
-    # ============================================================
-    # LOAD MODEL (FIXED: Properly defined function)
-    # ============================================================
+    # Load Model (cached)
     @st.cache_resource
-    def load_model():
-        """Load model from Hugging Face using hub (handles Xet properly)"""
-        
-        # Check if model exists locally (cached)
-        local_model = "saved_models/ensemble_models.pt"
-        
-        if os.path.exists(local_model):
-            st.info("📁 Using cached local model")
-            model_path = local_model
-        else:
-            st.info("📥 Downloading model from Hugging Face...")
-            try:
-                # This properly handles Xet storage
-                model_path = hf_hub_download(
-                    repo_id="iamthearafatkhan/dlr-pcvw-acne-severity",
-                    filename="ensemble_models.pt",
-                    local_dir="saved_models",
-                    local_dir_use_symlinks=False
-                )
-                st.success("✅ Model downloaded successfully!")
-            except Exception as e:
-                st.error(f"❌ Failed to download model: {e}")
-                st.info("Make sure your model is public on Hugging Face")
-                st.stop()
-        
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        predictor = DLRPredictor(model_path, device)
-        
-        support_x, support_y = load_support_set()
-        predictor.load_support_set(support_x, support_y)
-        
-        return predictor
+    def get_predictor():
+        return load_model()
     
-    predictor = load_model()
+    predictor = get_predictor()
 
     # Main content
     st.markdown('<div class="glass-container">', unsafe_allow_html=True)

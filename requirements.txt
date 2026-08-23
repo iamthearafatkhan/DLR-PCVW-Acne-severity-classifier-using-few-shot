@@ -1,7 +1,10 @@
-streamlit
-torch
-torchvision
-numpy
-matplotlib
-Pillow
-requests
+streamlit==1.28.1
+torch==2.0.1
+torchvision==0.15.2
+numpy==1.24.3
+matplotlib==3.7.2
+Pillow==10.0.0
+requests==2.31.0
+protobuf==3.20.3
+packaging==23.1
+huggingface-hub==0.20.0

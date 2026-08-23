@@ -1,10 +1,4 @@
-# app.py
-import sys
-import os
-
-# Add current directory to path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
+# app.py - DLR-PCVW Acne Severity Classification Web App
 import streamlit as st
 import torch
 import torch.nn as nn
@@ -14,22 +8,6 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Agg')  # Important for Streamlit Cloud
-import requests
-from io import BytesIO
-import time
-import base64
-
-
-
-
-# app.py - DLR-PCVW Acne Severity Classification Web App
-import streamlit as st
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import numpy as np
-from PIL import Image
-import matplotlib.pyplot as plt
 import os
 import sys
 from torchvision import transforms
@@ -38,6 +16,7 @@ import requests
 from io import BytesIO
 import time
 import random
+from huggingface_hub import hf_hub_download  # 🔥 CRITICAL: For Xet storage
 
 # ============================================================
 # PAGE CONFIGURATION
@@ -50,90 +29,91 @@ st.set_page_config(
 )
 
 # ============================================================
-# CUSTOM CSS - Minimalist Medical + Subtle Glassmorphism
+# CUSTOM CSS - Dark Theme + Subtle Glassmorphism
 # ============================================================
 def load_css():
-    """Load custom CSS with minimalist medical + subtle glassmorphism"""
+    """Load custom CSS with dark theme + subtle glassmorphism"""
     st.markdown("""
     <style>
-    /* Clean background */
+    /* Dark background */
     .stApp {
         background: #0b0f14;
     }
     
-    /* Subtle glassmorphism for main containers */
+    /* Subtle glassmorphism for main containers - Dark Version */
     .glass-container {
-        background: rgba(255, 255, 255, 0.85);
+        background: rgba(20, 25, 35, 0.85);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 20px;
         padding: 1.5rem;
         margin: 0.5rem 0;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
     }
     
-    /* Compact Header with subtle glass */
+    /* Compact Header with subtle glass - Dark Version */
     .main-header {
         text-align: center;
         padding: 0.8rem 0 0.5rem 0;
-        background: rgba(255, 255, 255, 0.8);
+        background: rgba(20, 25, 35, 0.8);
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
         border-radius: 16px;
         margin-bottom: 0.8rem;
-        border: 1px solid rgba(255, 255, 255, 0.5);
-        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
     }
     
     .main-header h1 {
         font-size: 2rem;
         font-weight: 800;
-        color: #1a2332;
+        color: #ffffff;
         letter-spacing: -0.5px;
         margin: 0;
         padding: 0;
     }
     
     .main-header h1 .accent {
-        color: #3182ce;
+        color: #60a5fa;
     }
     
     .main-header .subtitle {
         font-size: 0.9rem;
-        color: #4a5568;
+        color: #94a3b8;
         margin-top: 0.1rem;
         font-weight: 400;
     }
     
     .main-header .badge {
         display: inline-block;
-        background: #3182ce;
-        color: white;
+        background: #60a5fa;
+        color: #0b0f14;
         padding: 0.15rem 0.8rem;
         border-radius: 20px;
         font-size: 0.7rem;
-        font-weight: 500;
+        font-weight: 600;
         margin-top: 0.2rem;
     }
     
-    /* Severity Card with subtle glass */
+    /* Severity Card with subtle glass - Dark Version */
     .severity-card {
         padding: 1.2rem;
         border-radius: 16px;
         text-align: center;
         margin: 0.3rem 0;
-        border: 2px solid #e2e8f0;
-        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(20, 25, 35, 0.9);
         backdrop-filter: blur(5px);
         -webkit-backdrop-filter: blur(5px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         transition: all 0.3s ease;
     }
     
     .severity-card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        border-color: rgba(255, 255, 255, 0.15);
     }
     
     .severity-card .grade {
@@ -144,13 +124,17 @@ def load_css():
     
     .severity-card .sub {
         font-size: 0.9rem;
-        color: #718096;
+        color: #94a3b8;
         margin-top: 0.15rem;
+    }
+    
+    .severity-card p {
+        color: #94a3b8;
     }
     
     .confidence-bar {
         margin-top: 0.5rem;
-        background: #edf2f7;
+        background: #1e293b;
         border-radius: 8px;
         height: 8px;
         overflow: hidden;
@@ -162,31 +146,32 @@ def load_css():
         transition: width 1s ease;
     }
     
-    /* Metric cards with subtle glass */
+    /* Metric cards with subtle glass - Dark Version */
     .metric-card {
-        background: rgba(255, 255, 255, 0.85);
+        background: rgba(20, 25, 35, 0.85);
         backdrop-filter: blur(5px);
         -webkit-backdrop-filter: blur(5px);
         border-radius: 12px;
         padding: 0.8rem 1rem;
-        border: 1px solid rgba(226, 232, 240, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.06);
         text-align: center;
         transition: all 0.3s ease;
     }
     
     .metric-card:hover {
-        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        border-color: rgba(255, 255, 255, 0.12);
     }
     
     .metric-card .value {
         font-size: 1.3rem;
         font-weight: 700;
-        color: #1a2332;
+        color: #ffffff;
     }
     
     .metric-card .label {
         font-size: 0.75rem;
-        color: #718096;
+        color: #94a3b8;
         margin-top: 0.1rem;
     }
     
@@ -200,54 +185,55 @@ def load_css():
         flex: 1;
     }
     
-    /* Disclaimer */
+    /* Disclaimer - Dark Version */
     .disclaimer {
         font-size: 0.8rem;
-        color: #718096;
+        color: #94a3b8;
         padding: 0.8rem;
-        background: rgba(247, 250, 252, 0.9);
+        background: rgba(20, 25, 35, 0.9);
         backdrop-filter: blur(5px);
         -webkit-backdrop-filter: blur(5px);
         border-radius: 12px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid rgba(255, 255, 255, 0.06);
         margin-top: 0.8rem;
     }
     
-    /* Model Pipeline with glass */
+    /* Model Pipeline with glass - Dark Version */
     .model-pipeline {
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 0.3rem;
         padding: 0.6rem;
-        background: rgba(247, 250, 252, 0.85);
+        background: rgba(20, 25, 35, 0.85);
         backdrop-filter: blur(5px);
         -webkit-backdrop-filter: blur(5px);
         border-radius: 12px;
         flex-wrap: wrap;
         font-size: 0.7rem;
-        color: #4a5568;
-        border: 1px solid rgba(226, 232, 240, 0.5);
+        color: #94a3b8;
+        border: 1px solid rgba(255, 255, 255, 0.06);
     }
     
     .model-pipeline .step {
-        background: rgba(255, 255, 255, 0.8);
+        background: rgba(30, 41, 59, 0.8);
         padding: 0.2rem 0.6rem;
         border-radius: 20px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid rgba(255, 255, 255, 0.06);
         font-weight: 500;
         font-size: 0.7rem;
+        color: #e2e8f0;
     }
     
     .model-pipeline .arrow {
-        color: #a0aec0;
+        color: #475569;
         font-size: 0.9rem;
     }
     
-    /* Buttons */
+    /* Buttons - Dark Version */
     .stButton > button {
-        background: #1a2332;
-        color: white;
+        background: #60a5fa;
+        color: #0b0f14;
         border: none;
         padding: 0.6rem 2rem;
         border-radius: 12px;
@@ -258,26 +244,31 @@ def load_css():
     }
     
     .stButton > button:hover {
-        background: #2d3748;
+        background: #93bbfc;
         transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(26, 35, 50, 0.15);
+        box-shadow: 0 6px 20px rgba(96, 165, 250, 0.25);
     }
     
-    /* Sidebar with glass */
+    /* Sidebar with glass - Dark Version */
     .css-1d391kg {
-        background: rgba(255, 255, 255, 0.9);
+        background: rgba(11, 15, 20, 0.95);
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
-        border-right: 1px solid rgba(226, 232, 240, 0.5);
+        border-right: 1px solid rgba(255, 255, 255, 0.06);
     }
     
-    /* Upload area */
+    /* Sidebar text colors */
+    .css-1d391kg .stMarkdown {
+        color: #e2e8f0;
+    }
+    
+    /* Upload area - Dark Version */
     .upload-area {
-        border: 2px dashed #cbd5e0;
+        border: 2px dashed #334155;
         border-radius: 16px;
         padding: 2rem;
         text-align: center;
-        background: rgba(247, 250, 252, 0.5);
+        background: rgba(20, 25, 35, 0.5);
         backdrop-filter: blur(5px);
         -webkit-backdrop-filter: blur(5px);
     }
@@ -293,22 +284,43 @@ def load_css():
         animation: pulse 1.5s ease-in-out infinite;
     }
     
-    /* Divider */
+    /* Divider - Dark Version */
     hr {
         border: none;
-        border-top: 1px solid rgba(226, 232, 240, 0.6);
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
         margin: 0.5rem 0;
     }
     
-    /* Prototype similarity bar container */
-    .similarity-container {
-        background: rgba(255, 255, 255, 0.8);
+    /* Headers in dark mode */
+    h1, h2, h3, h4, h5, h6 {
+        color: #ffffff !important;
+    }
+    
+    /* Streamlit native elements */
+    .stMarkdown {
+        color: #e2e8f0;
+    }
+    
+    .stInfo, .stSuccess, .stWarning, .stError {
+        background-color: rgba(20, 25, 35, 0.9) !important;
         backdrop-filter: blur(5px);
-        -webkit-backdrop-filter: blur(5px);
-        border-radius: 12px;
-        padding: 0.8rem;
-        border: 1px solid rgba(226, 232, 240, 0.5);
-        margin: 0.3rem 0;
+        border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    }
+    
+    .stInfo {
+        border-left-color: #60a5fa !important;
+    }
+    
+    .stSuccess {
+        border-left-color: #34d399 !important;
+    }
+    
+    .stWarning {
+        border-left-color: #fbbf24 !important;
+    }
+    
+    .stError {
+        border-left-color: #f87171 !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -449,7 +461,7 @@ def plot_prototype_similarity(probs, severity_names, severity_colors, pred_idx):
 # PREDICTOR CLASS
 # ============================================================
 class DLRPredictor:
-    def __init__(self, model_path_or_url, device='cpu'):
+    def __init__(self, model_path, device='cpu'):
         self.device = device
         self.severity_names = ['Grade 0 (Clear)', 'Grade 1 (Mild)', 'Grade 2 (Moderate)', 'Grade 3 (Severe)']
         self.severity_colors = ['#4CAF50', '#FFC107', '#FF9800', '#F44336']
@@ -459,20 +471,8 @@ class DLRPredictor:
         self.support_y = None
         
         try:
-            if model_path_or_url.startswith('http'):
-                with st.spinner("Downloading model from Hugging Face..."):
-                    response = requests.get(model_path_or_url)
-                    checkpoint = torch.load(
-                        BytesIO(response.content), 
-                        map_location=self.device,
-                        weights_only=False  # Required for PyTorch 2.6+
-                    )
-            else:
-                checkpoint = torch.load(
-                    model_path_or_url, 
-                    map_location=self.device,
-                    weights_only=False
-                )
+            # Load checkpoint (now using local file from hf_hub_download)
+            checkpoint = torch.load(model_path, map_location=self.device, weights_only=False)
             
             model_states = checkpoint['models']
             for state_dict in model_states:
@@ -482,29 +482,6 @@ class DLRPredictor:
                 self.models.append(model)
             
             st.success(f"✅ Loaded {len(self.models)} ensemble models")
-            
-        except TypeError as e:
-            # Fallback for older PyTorch versions that don't support weights_only
-            st.warning("Older PyTorch version detected. Loading without weights_only...")
-            try:
-                if model_path_or_url.startswith('http'):
-                    response = requests.get(model_path_or_url)
-                    checkpoint = torch.load(BytesIO(response.content), map_location=self.device)
-                else:
-                    checkpoint = torch.load(model_path_or_url, map_location=self.device)
-                
-                model_states = checkpoint['models']
-                for state_dict in model_states:
-                    model = DLR_ProtoNet().to(self.device)
-                    model.load_state_dict(state_dict)
-                    model.eval()
-                    self.models.append(model)
-                
-                st.success(f"✅ Loaded {len(self.models)} ensemble models")
-                
-            except Exception as e2:
-                st.error(f"Error loading model: {e2}")
-                raise
                 
         except Exception as e:
             st.error(f"Error loading model: {e}")
@@ -575,7 +552,6 @@ class DLRPredictor:
 def load_support_set():
     """Load support set from Hugging Face or local file"""
     
-    # First, check if support set exists locally (for faster loading)
     local_support_file = "support_set/support_set.pt"
     
     if os.path.exists(local_support_file):
@@ -583,26 +559,18 @@ def load_support_set():
         data = torch.load(local_support_file, map_location='cpu', weights_only=False)
         return data['x'], data['y']
     
-    # If not local, download from Hugging Face
     try:
         st.info("📥 Downloading support set from Hugging Face...")
-        support_url = "https://huggingface.co/iamthearafatkhan/dlr-pcvw-acne-severity/resolve/main/support_set/support_set.pt"
-        
-        response = requests.get(support_url)
-        if response.status_code == 200:
-            # Load from memory
-            data = torch.load(BytesIO(response.content), map_location='cpu', weights_only=False)
-            
-            # Optionally save locally for next time
-            os.makedirs(os.path.dirname(local_support_file), exist_ok=True)
-            torch.save(data, local_support_file)
-            st.success(f"✅ Support set downloaded and cached locally")
-            
-            return data['x'], data['y']
-        else:
-            st.error(f"Failed to download support set (Status: {response.status_code})")
-            # Fallback to random data
-            return create_fallback_support_set()
+        # Use hf_hub_download to properly handle Xet storage
+        support_path = hf_hub_download(
+            repo_id="iamthearafatkhan/dlr-pcvw-acne-severity",
+            filename="support_set/support_set.pt",
+            local_dir="support_set",
+            local_dir_use_symlinks=False
+        )
+        data = torch.load(support_path, map_location='cpu', weights_only=False)
+        st.success(f"✅ Support set downloaded and cached locally")
+        return data['x'], data['y']
             
     except Exception as e:
         st.error(f"Error loading support set: {e}")
@@ -773,16 +741,34 @@ def main():
         Attention visualizations indicate model focus and are not clinically validated.
         """)
 
-    # Load Model
+    # ============================================================
+    # LOAD MODEL (FIXED: Properly defined function)
+    # ============================================================
     @st.cache_resource
     def load_model():
+        """Load model from Hugging Face using hub (handles Xet properly)"""
+        
+        # Check if model exists locally (cached)
         local_model = "saved_models/ensemble_models.pt"
+        
         if os.path.exists(local_model):
+            st.info("📁 Using cached local model")
             model_path = local_model
-            st.info("📁 Using local model")
         else:
-            model_path = "https://huggingface.co/iamthearafatkhan/dlr-pcvw-acne-severity/resolve/main/ensemble_models.pt"
             st.info("📥 Downloading model from Hugging Face...")
+            try:
+                # This properly handles Xet storage
+                model_path = hf_hub_download(
+                    repo_id="iamthearafatkhan/dlr-pcvw-acne-severity",
+                    filename="ensemble_models.pt",
+                    local_dir="saved_models",
+                    local_dir_use_symlinks=False
+                )
+                st.success("✅ Model downloaded successfully!")
+            except Exception as e:
+                st.error(f"❌ Failed to download model: {e}")
+                st.info("Make sure your model is public on Hugging Face")
+                st.stop()
         
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         predictor = DLRPredictor(model_path, device)
@@ -864,29 +850,29 @@ def main():
             # Severity card
             st.markdown(f"""
             <div class="severity-card" style="border-color: {color};">
-                <p style="color: #718096; font-size: 0.8rem; margin: 0;">Predicted Severity</p>
+                <p style="color: #94a3b8; font-size: 0.8rem; margin: 0;">Predicted Severity</p>
                 <div class="grade" style="color: {color};">{severity}</div>
                 <div class="sub">Grade {result['prediction']} · {k_shot_used}-Shot</div>
                 <div class="confidence-bar">
                     <div class="fill" style="width: {confidence*100}%; background: {color};"></div>
                 </div>
-                <p style="margin-top: 0.3rem; font-size: 0.9rem;">Confidence: {confidence:.2%}</p>
+                <p style="margin-top: 0.3rem; font-size: 0.9rem; color: #e2e8f0;">Confidence: {confidence:.2%}</p>
             </div>
             """, unsafe_allow_html=True)
             
-            # === NEW: Two Metric Cards - Prototype Similarity & Prediction Probability ===
-            st.markdown("""
+            # Two Metric Cards - Prototype Similarity & Prediction Probability
+            st.markdown(f"""
             <div class="metric-row">
                 <div class="metric-card">
-                    <div class="value">{:.2%}</div>
+                    <div class="value">{confidence:.2%}</div>
                     <div class="label">Prototype Similarity</div>
                 </div>
                 <div class="metric-card">
-                    <div class="value">{:.2%}</div>
+                    <div class="value">{pred_prob:.2%}</div>
                     <div class="label">Prediction Probability</div>
                 </div>
             </div>
-            """.format(confidence, pred_prob), unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
             
             # Prototype similarity bar chart
             st.markdown("#### 📈 Prototype Similarity")
@@ -907,15 +893,15 @@ def main():
                 
                 fig2, axes = plt.subplots(1, 3, figsize=(9, 2.5))
                 axes[0].imshow(img_display)
-                axes[0].set_title('Original', fontsize=9)
+                axes[0].set_title('Original', fontsize=9, color='white')
                 axes[0].axis('off')
                 
                 axes[1].imshow(attention_upsampled, cmap='hot', interpolation='bilinear')
-                axes[1].set_title('Attention Map', fontsize=9)
+                axes[1].set_title('Attention Map', fontsize=9, color='white')
                 axes[1].axis('off')
                 
                 axes[2].imshow(overlay)
-                axes[2].set_title('Overlay', fontsize=9)
+                axes[2].set_title('Overlay', fontsize=9, color='white')
                 axes[2].axis('off')
                 
                 plt.tight_layout()
@@ -948,11 +934,10 @@ def main():
 
     # Footer
     st.markdown("""
-    <div style="text-align: center; color: #a0aec0; font-size: 0.75rem; padding: 0.5rem 0;">
+    <div style="text-align: center; color: #475569; font-size: 0.75rem; padding: 0.5rem 0;">
         DLR-PCVW · Distribution-Aware Few-Shot Learning · Thesis Demonstration
     </div>
     """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
-
